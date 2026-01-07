@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Finance Tracker</title>
+
+<style>
+:root {
+  --bg: #020617;
+  --card: #020617;
+  --accent: #38bdf8;
+  --green: #22c55e;
+  --red: #ef4444;
+  --muted: #64748b;
+}
+
+* {
+  box-sizing: border-box;
+  font-family: system-ui, sans-serif;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: radial-gradient(circle at top, #020617, #000);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: #e5e7eb;
+}
+
+.app {
+  width: 600px;
+  background: #020617;
+  border-radius: 18px;
+  padding: 20px;
+  box-shadow: 0 40px 90px rgba(0,0,0,.7);
+}
+
+h1 {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.dashboard {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.card {
+  background: #020617;
+  border-radius: 12px;
+  padding: 12px;
+  text-align: center;
+}
+
+.card span {
+  display: block;
+  margin-top: 6px;
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+
+.balance span { color: var(--accent); }
+.income span { color: var(--green); }
+.expense span { color: var(--red); }
+
+.form {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.form input,
+.form select {
+  padding: 10px;
+  border-radius: 10px;
+  border: none;
+  background: #020617;
+  color: #e5e7eb;
+}
+
+.form button {
+  grid-column: span 2;
+  padding: 10px;
+  border-radius: 10px;
+  border: none;
+  background: var(--accent);
+  color: #020617;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.filters {
+  display: flex;
+  justify-content: space-between;
+  font-size: .9rem;
+  margin-bottom: 10px;
+}
+
+.filters span {
+  cursor: pointer;
+  color: var(--muted);
+}
+
+.filters .active {
+  color: var(--accent);
+}
+
+ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+li {
+  background: #020617;
+  padding: 10px;
+  border-radius: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+li.income { border-left: 4px solid var(--green); }
+li.expense { border-left: 4px solid var(--red); }
+
+li button {
+  background: none;
+  border: none;
+  color: var(--red);
+  font-size: 18px;
+  cursor: pointer;
+}
+</style>
+</head>
+
+<body>
+<div class="app">
+  <h1>Finance Tracker</h1>
+
+  <div class="dashboard">
+    <div class="card balance">Balance <span id="balance">$0</span></div>
+    <div class="card income">Income <span id="income">$0</span></div>
+    <div class="card expense">Expense <span id="expense">$0</span></div>
+  </div>
+
+  <div class="form">
+    <input id="title" placeholder="Title" />
+    <input id="amount" type="number" placeholder="Amount" />
+    <select id="type">
+      <option value="income">Income</option>
+      <option value="expense">Expense</option>
+    </select>
+    <select id="category">
+      <option>Food</option>
+      <option>Transport</option>
+      <option>Tech</option>
+      <option>Entertainment</option>
+      <option>Other</option>
+    </select>
+    <button id="add">Add Transaction</button>
+  </div>
+
+  <div class="filters">
+    <span data-filter="all" class="active">All</span>
+    <span data-filter="income">Income</span>
+    <span data-filter="expense">Expense</span>
+  </div>
+
+  <ul id="list"></ul>
+</div>
+
+<script>
+const titleEl = document.getElementById("title");
+const amountEl = document.getElementById("amount");
+const typeEl = document.getElementById("type");
+const categoryEl = document.getElementById("category");
+const listEl = document.getElementById("list");
+
+const balanceEl = document.getElementById("balance");
+const incomeEl = document.getElementById("income");
+const expenseEl = document.getElementById("expense");
+
+const filters = document.querySelectorAll(".filters span");
+
+let filter = "all";
+let transactions = JSON.parse(localStorage.getItem("finance")) || [];
+
+function save() {
+  localStorage.setItem("finance", JSON.stringify(transactions));
+}
+
+function render() {
+  listEl.innerHTML = "";
+
+  let income = 0;
+  let expense = 0;
+
+  transactions.forEach(t => {
+    if (t.type === "income") income += t.amount;
+    else expense += t.amount;
+  });
+
+  balanceEl.textContent = `$${income - expense}`;
+  incomeEl.textContent = `$${income}`;
+  expenseEl.textContent = `$${expense}`;
+
+  transactions
+    .filter(t => filter === "all" || t.type === filter)
+    .forEach((t, i) => {
+      const li = document.createElement("li");
+      li.className = t.type;
+
+      li.innerHTML = `
+        <div>
+          <strong>${t.title}</strong><br>
+          <small>${t.category}</small>
+        </div>
+        <div>
+          $${t.amount}
+          <button>×</button>
+        </div>
+      `;
+
+      li.querySelector("button").onclick = () => {
+        transactions.splice(i, 1);
+        save();
+        render();
+      };
+
+      listEl.appendChild(li);
+    });
+}
+
+document.getElementById("add").onclick = () => {
+  if (!titleEl.value || !amountEl.value) return;
+
+  transactions.push({
+    title: titleEl.value,
+    amount: +amountEl.value,
+    type: typeEl.value,
+    category: categoryEl.value
+  });
+
+  titleEl.value = "";
+  amountEl.value = "";
+
+  save();
+  render();
+};
+
+filters.forEach(f => {
+  f.onclick = () => {
+    filters.forEach(x => x.classList.remove("active"));
+    f.classList.add("active");
+    filter = f.dataset.filter;
+    render();
+  };
+});
+
+render();
+</script>
+</body>
+</html>
